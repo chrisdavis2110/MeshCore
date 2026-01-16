@@ -59,3 +59,14 @@ mesh::LocalIdentity radio_new_identity() {
   RadioNoiseListener rng(radio);
   return mesh::LocalIdentity(&rng);  // create new random identity
 }
+
+#if ENV_INCLUDE_INA219
+uint16_t StationG2Board::getBattMilliVolts() {
+  // Use EnvironmentSensorManager's getBattMilliVolts() method
+  return sensors.getBattMilliVolts();
+}
+#else
+uint16_t StationG2Board::getBattMilliVolts() {
+  return 0;
+}
+#endif

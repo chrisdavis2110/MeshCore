@@ -44,9 +44,7 @@ public:
     esp_deep_sleep_start();   // CPU halts here and never returns!
   }
 
-  uint16_t getBattMilliVolts() override {
-    return 0;
-  }
+  uint16_t getBattMilliVolts() override;
 
   const char* getManufacturerName() const override {
     return "Station G2";
