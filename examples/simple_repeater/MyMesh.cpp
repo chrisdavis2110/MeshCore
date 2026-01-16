@@ -269,7 +269,7 @@ int MyMesh::handleRequest(ClientInfo *sender, uint32_t sender_timestamp, uint8_t
       int results_offset = 0;
       uint8_t results_buffer[130];
       for(int index = 0; index < count && index + offset < neighbours_count; index++){
-        
+
         // stop if we can't fit another entry in results
         int entry_size = pubkey_prefix_length + 4 + 1;
         if(results_offset + entry_size > sizeof(results_buffer)){
@@ -680,7 +680,7 @@ MyMesh::MyMesh(mesh::MainBoard &board, mesh::Radio &radio, mesh::MillisecondCloc
   next_local_advert = next_flood_advert = 0;
   dirty_contacts_expiry = 0;
   set_radio_at = revert_radio_at = 0;
-  _logging = false;
+  _logging = true;  // Enable logging by default for all repeaters
   region_load_active = false;
 
 #if MAX_NEIGHBOURS
@@ -875,6 +875,79 @@ void MyMesh::removeNeighbor(const uint8_t *pubkey, int key_len) {
 #endif
 }
 
+void MyMesh::formatSeenReply(char *reply, char type, int hops) {
+  char *dp = reply;
+  *dp = 0;
+
+  uint8_t filter_type = 0;
+  if (type == 'R') filter_type = ADV_TYPE_REPEATER;
+  else if (type == 'C') filter_type = ADV_TYPE_CHAT;
+  else if (type == 'M') filter_type = ADV_TYPE_ROOM;
+
+  // If hops not specified (hops < 0), default to 0-hop adverts
+  uint8_t filter_hops = (hops < 0) ? 0 : (uint8_t)hops;
+
+  int count = 0;
+#if MAX_NEIGHBOURS
+  // create copy of neighbours list, skipping empty entries
+  int16_t neighbours_count = 0;
+  NeighbourInfo* sorted_neighbours[MAX_NEIGHBOURS];
+  for (int i = 0; i < MAX_NEIGHBOURS; i++) {
+    auto neighbour = &neighbours[i];
+    if (neighbour->heard_timestamp > 0) {
+      sorted_neighbours[neighbours_count] = neighbour;
+      neighbours_count++;
+    }
+  }
+
+  // sort neighbours newest to oldest
+  std::sort(sorted_neighbours, sorted_neighbours + neighbours_count, [](const NeighbourInfo* a, const NeighbourInfo* b) {
+    return a->heard_timestamp > b->heard_timestamp; // desc
+  });
+
+  for (int i = 0; i < neighbours_count && dp - reply < 134; i++) {
+    NeighbourInfo *neighbour = sorted_neighbours[i];
+
+    // Filter by hops (neighbours are always 0-hop)
+    if (filter_hops != 0) continue;
+
+    // Filter by type (neighbours are always repeaters)
+    if (filter_type > 0 && filter_type != ADV_TYPE_REPEATER) continue;
+
+    // Add newline if not first entry
+    if (count > 0) *dp++ = '\n';
+
+    char hex[PUB_KEY_SIZE * 2 + 1];
+    mesh::Utils::toHex(hex, neighbour->id.pub_key, PUB_KEY_SIZE);
+
+    uint32_t secs_ago = getRTCClock()->getCurrentTime() - neighbour->heard_timestamp;
+    sprintf(dp, "%s:%u:%d:%d", hex, secs_ago, neighbour->snr, ADV_TYPE_REPEATER);
+    while (*dp) dp++;
+    count++;
+  }
+#endif
+
+  if (count == 0) {
+    strcpy(reply, "");
+  }
+}
+
+void MyMesh::formatNoiseFloorReply(char *reply, int start_index) {
+  *reply = 0;
+
+  if (start_index == -2) {
+    // reset min/max - not implemented in this version, just return OK
+    strcpy(reply, "OK");
+  } else if (start_index < 0) {
+    // show current noise floor
+    int16_t nfloor = (int16_t)_radio->getNoiseFloor();
+    sprintf(reply, "%d", nfloor);
+  } else {
+    // start_index >= 0 - not implemented (would need noise floor history)
+    strcpy(reply, "");
+  }
+}
+
 void MyMesh::formatStatsReply(char *reply) {
   StatsFormatHelper::formatCoreStats(reply, board, *_ms, _err_flags, _mgr);
 }
@@ -884,7 +957,7 @@ void MyMesh::formatRadioStatsReply(char *reply) {
 }
 
 void MyMesh::formatPacketStatsReply(char *reply) {
-  StatsFormatHelper::formatPacketStats(reply, radio_driver, getNumSentFlood(), getNumSentDirect(), 
+  StatsFormatHelper::formatPacketStats(reply, radio_driver, getNumSentFlood(), getNumSentDirect(),
                                        getNumRecvFlood(), getNumRecvDirect());
 }
 

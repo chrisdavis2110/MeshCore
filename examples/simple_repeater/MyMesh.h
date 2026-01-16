@@ -68,11 +68,11 @@ struct NeighbourInfo {
 };
 
 #ifndef FIRMWARE_BUILD_DATE
-  #define FIRMWARE_BUILD_DATE   "30 Nov 2025"
+  #define FIRMWARE_BUILD_DATE   "26 Dec 2025"
 #endif
 
 #ifndef FIRMWARE_VERSION
-  #define FIRMWARE_VERSION   "v1.11.0"
+  #define FIRMWARE_VERSION   "c2d-v1.11.0"
 #endif
 
 #define FIRMWARE_ROLE "repeater"
@@ -195,6 +195,8 @@ public:
   void setTxPower(uint8_t power_dbm) override;
   void formatNeighborsReply(char *reply) override;
   void removeNeighbor(const uint8_t* pubkey, int key_len) override;
+  void formatSeenReply(char *reply, char type, int hops) override;
+  void formatNoiseFloorReply(char *reply, int start_index) override;
   void formatStatsReply(char *reply) override;
   void formatRadioStatsReply(char *reply) override;
   void formatPacketStatsReply(char *reply) override;
@@ -213,7 +215,7 @@ public:
     {
       bridge.begin();
     }
-    else 
+    else
     {
       bridge.end();
     }

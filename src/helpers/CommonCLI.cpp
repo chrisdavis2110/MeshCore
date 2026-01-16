@@ -167,14 +167,24 @@ void CommonCLI::savePrefs() {
 }
 
 uint8_t CommonCLI::buildAdvertData(uint8_t node_type, uint8_t* app_data) {
+  uint16_t batt_mv = _board->getBattMilliVolts();
   if (_prefs->advert_loc_policy == ADVERT_LOC_NONE) {
     AdvertDataBuilder builder(node_type, _prefs->node_name);
+    if (batt_mv > 0) {
+      builder.setFeat1(batt_mv);
+    }
     return builder.encodeTo(app_data);
   } else if (_prefs->advert_loc_policy == ADVERT_LOC_SHARE) {
     AdvertDataBuilder builder(node_type, _prefs->node_name, _sensors->node_lat, _sensors->node_lon);
+    if (batt_mv > 0) {
+      builder.setFeat1(batt_mv);
+    }
     return builder.encodeTo(app_data);
   } else {
     AdvertDataBuilder builder(node_type, _prefs->node_name, _prefs->node_lat, _prefs->node_lon);
+    if (batt_mv > 0) {
+      builder.setFeat1(batt_mv);
+    }
     return builder.encodeTo(app_data);
   }
 }
@@ -227,6 +237,25 @@ void CommonCLI::handleCommand(uint32_t sender_timestamp, const char* command, ch
       } else {
         strcpy(reply, "ERR: bad pubkey");
       }
+    } else if (memcmp(command, "seen", 4) == 0) {
+      strcpy(tmp, &command[5]);
+      char ntype=0;
+      int hops = 0;
+      const char *parts[2];
+      int num = mesh::Utils::parseTextParts(tmp, parts, 2, ' ');
+      if (num > 0) hops = atoi(parts[0]);
+      if (num > 1) ntype = toupper(*(parts[1]));
+      _callbacks->formatSeenReply(reply,ntype,hops);
+    } else if (memcmp(command, "noise", 5) == 0) {
+      int start_index = -1;
+      const char *parts[2];
+      strcpy(tmp, &command[6]);
+      int num = mesh::Utils::parseTextParts(tmp, parts, 1, ' ');
+      if (num > 0) {
+	      if (tolower(*(parts[0])) == 'r') start_index = -2; // reset min/max
+	      else start_index = atoi(parts[0]);
+      }
+      _callbacks->formatNoiseFloorReply(reply,start_index);
     } else if (memcmp(command, "tempradio ", 10) == 0) {
       strcpy(tmp, &command[10]);
       const char *parts[5];
@@ -271,7 +300,7 @@ void CommonCLI::handleCommand(uint32_t sender_timestamp, const char* command, ch
         sprintf(reply, "> %d", ((uint32_t) _prefs->advert_interval) * 2);
       } else if (memcmp(config, "guest.password", 14) == 0) {
         sprintf(reply, "> %s", _prefs->guest_password);
-      } else if (sender_timestamp == 0 && memcmp(config, "prv.key", 7) == 0) {  // from serial command line only
+      } else if (memcmp(config, "prv.key", 7) == 0) {
         uint8_t prv_key[PRV_KEY_SIZE];
         int len = _callbacks->getSelfId().writeTo(prv_key, PRV_KEY_SIZE);
         mesh::Utils::toHex(tmp, prv_key, len);
@@ -393,8 +422,7 @@ void CommonCLI::handleCommand(uint32_t sender_timestamp, const char* command, ch
         StrHelper::strncpy(_prefs->guest_password, &config[15], sizeof(_prefs->guest_password));
         savePrefs();
         strcpy(reply, "OK");
-      } else if (sender_timestamp == 0 &&
-                 memcmp(config, "prv.key ", 8) == 0) { // from serial command line only
+      } else if (memcmp(config, "prv.key ", 8) == 0) {
         uint8_t prv_key[PRV_KEY_SIZE];
         bool success = mesh::Utils::fromHex(prv_key, PRV_KEY_SIZE, &config[8]);
         if (success) {
@@ -566,7 +594,7 @@ void CommonCLI::handleCommand(uint32_t sender_timestamp, const char* command, ch
       }
     } else if (memcmp(command, "sensor set ", 11) == 0) {
       strcpy(tmp, &command[11]);
-      const char *parts[2]; 
+      const char *parts[2];
       int num = mesh::Utils::parseTextParts(tmp, parts, 2, ' ');
       const char *key = (num > 0) ? parts[0] : "";
       const char *value = (num > 1) ? parts[1] : "null";
@@ -589,7 +617,7 @@ void CommonCLI::handleCommand(uint32_t sender_timestamp, const char* command, ch
         dp = strchr(dp, 0);
         int i;
         for (i = start; i < end && (dp-reply < 134); i++) {
-          sprintf(dp, "%s=%s\n", 
+          sprintf(dp, "%s=%s\n",
             _sensors->getSettingName(i),
             _sensors->getSettingValue(i));
           dp = strchr(dp, 0);
@@ -666,8 +694,8 @@ void CommonCLI::handleCommand(uint32_t sender_timestamp, const char* command, ch
         bool active = !strcmp(_sensors->getSettingByKey("gps"), "1");
         if (enabled) {
           sprintf(reply, "on, %s, %s, %d sats",
-            active?"active":"deactivated", 
-            fix?"fix":"no fix", 
+            active?"active":"deactivated",
+            fix?"fix":"no fix",
             sats);
         } else {
           strcpy(reply, "off");

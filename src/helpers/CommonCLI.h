@@ -68,6 +68,8 @@ public:
   virtual void removeNeighbor(const uint8_t* pubkey, int key_len) {
     // no op by default
   };
+  virtual void formatSeenReply(char *reply,char type,int hops) = 0;
+  virtual void formatNoiseFloorReply(char *reply,int start_index) = 0;
   virtual void formatStatsReply(char *reply) = 0;
   virtual void formatRadioStatsReply(char *reply) = 0;
   virtual void formatPacketStatsReply(char *reply) = 0;

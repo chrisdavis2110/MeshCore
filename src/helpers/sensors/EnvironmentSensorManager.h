@@ -55,4 +55,9 @@ public:
   const char* getSettingName(int i) const override;
   const char* getSettingValue(int i) const override;
   bool setSettingValue(const char* name, const char* value) override;
+
+  #if ENV_INCLUDE_INA219
+  // Get battery voltage from INA219 in millivolts
+  uint16_t getBattMilliVolts();
+  #endif
 };

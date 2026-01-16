@@ -276,7 +276,7 @@ bool EnvironmentSensorManager::begin() {
     INA260_initialized = true;
   } else {
     INA260_initialized = false;
-    MESH_DEBUG_PRINTLN("INA260 was not found at I2C address %02X", TELEM_INA219_ADDRESS);
+    MESH_DEBUG_PRINTLN("INA260 was not found at I2C address %02X", TELEM_INA260_ADDRESS);
   }
   #endif
 
@@ -325,6 +325,17 @@ bool EnvironmentSensorManager::begin() {
 
   return true;
 }
+
+#if ENV_INCLUDE_INA219
+uint16_t EnvironmentSensorManager::getBattMilliVolts() {
+  if (INA219_initialized) {
+    float bus_voltage = INA219.getBusVoltage_V();
+    // Convert volts to millivolts (multiply by 1000)
+    return (uint16_t)(bus_voltage * 1000.0f);
+  }
+  return 0;
+}
+#endif
 
 bool EnvironmentSensorManager::querySensors(uint8_t requester_permissions, CayenneLPP& telemetry) {
   next_available_channel = TELEM_CHANNEL_SELF + 1;

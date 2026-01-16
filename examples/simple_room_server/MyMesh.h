@@ -26,11 +26,11 @@
 /* ------------------------------ Config -------------------------------- */
 
 #ifndef FIRMWARE_BUILD_DATE
-  #define FIRMWARE_BUILD_DATE   "30 Nov 2025"
+  #define FIRMWARE_BUILD_DATE   "26 Dec 2025"
 #endif
 
 #ifndef FIRMWARE_VERSION
-  #define FIRMWARE_VERSION   "v1.11.0"
+  #define FIRMWARE_VERSION   "c2d-v1.11.0"
 #endif
 
 #ifndef LORA_FREQ
@@ -191,6 +191,12 @@ public:
   void setTxPower(uint8_t power_dbm) override;
 
   void formatNeighborsReply(char *reply) override {
+    strcpy(reply, "not supported");
+  }
+  void formatSeenReply(char *reply, char type, int hops) override {
+    strcpy(reply, "not supported");
+  }
+  void formatNoiseFloorReply(char *reply, int start_index) override {
     strcpy(reply, "not supported");
   }
   void formatStatsReply(char *reply) override;
